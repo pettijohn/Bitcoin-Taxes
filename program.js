@@ -22,5 +22,10 @@ client.getAccounts({}, function (err, accounts) {
 
             });
         });
+
+        //https://developers.coinbase.com/api/v2?javascript#deposit-resource
+        // acct.getDeposits(null, function(err, txs) {
+        //     console.log(txs);
+        // });
     });
 });
