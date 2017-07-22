@@ -1,0 +1,13 @@
+[
+    {
+        "name": "dateAndType",
+        "columns": [
+            "type",
+            "created_at",
+            "amount.amount",
+            "amount.currency",
+            "native_amount.amount",
+            "native_amount.currency"
+        ]
+    }
+]

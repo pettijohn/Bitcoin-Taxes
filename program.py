@@ -5,7 +5,18 @@ import re
 from pathlib import Path
 from datetime import date, datetime
 from coinbase.wallet.client import Client
+from decimal import *
 
+# A column name uses dot syntax to step into nested dictionaries. 
+# Recursively walk the dots and return the value.
+def getSubcolumn(id, valsDics):
+    if re.search("\.", id):
+        matches = re.search("^([^\.]+)\.(.*)$", id)
+        start = matches[1]
+        remainder = matches[2]
+        return getSubcolumn(remainder, valsDics[start])
+    else:
+        return valsDics[id]
 
 p = Path('./data/')
 if not p.exists():
@@ -41,5 +52,55 @@ if not p.exists():
         cache.write(json.dumps(alltxns))
 
 with open('./data/coinbaseCache.json', 'r') as cache:
-    data = json.loads(cache.read())
-    pass
+    rawData = json.loads(cache.read())
+
+    data = sorted(rawData, key=lambda tx: tx['created_at'])
+
+    balancesCrypto = {}
+    balancesFiat = {}
+
+    # Use a simple JSON file to transform the inputs to an output CSV
+    # This makes adding separate outputs easily config-driven
+    transforms = None
+    with open('transforms.json') as keys_file:
+        transforms = json.load(keys_file)
+    transform = transforms[0]
+    transColumns = transform['columns']
+
+    with open('./output.csv', 'w', newline='', encoding='utf-8') as outputfile:
+        # The automatic tranform columns are separate from the manually-added columns
+        csvColumns = transColumns.copy()
+        csvColumns.append("runningTotalNativeCurrency")
+        csvColumns.append("runningTotalCrypto")
+        outputcsv = csv.DictWriter(outputfile, csvColumns)
+        outputcsv.writeheader()
+
+        for tx in data:
+            cryptoCurrency = tx['amount']['currency']
+            amount = Decimal(tx['amount']['amount'])
+
+            fiatCurrency = tx['native_amount']['currency']
+            fiatAmount = Decimal(tx['native_amount']['amount'])
+            
+            if balancesCrypto.get(cryptoCurrency) == None:
+                balancesCrypto[cryptoCurrency] = Decimal(0)
+            balancesCrypto[cryptoCurrency] += amount
+
+            if balancesFiat.get(fiatCurrency) == None:
+                balancesFiat[fiatCurrency] = Decimal(0)
+            balancesFiat[fiatCurrency] += fiatAmount
+            
+            # buy, send, sell, transfer, 
+            # exchange_deposit, exchange_withdrawal, 
+            # vault_withdrawal, fiat_withdrawal
+            lineDict = {}
+            for column in transColumns:
+                lineDict[column] = getSubcolumn(column, tx)
+
+            lineDict["runningTotalNativeCurrency"] = balancesFiat["USD"]
+            lineDict["runningTotalCrypto"] = balancesCrypto[cryptoCurrency]
+            outputcsv.writerow(lineDict)
+
+        pass
+
+    
