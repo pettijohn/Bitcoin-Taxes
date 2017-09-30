@@ -1,0 +1,38 @@
+[
+    
+
+    //Rules cascade, and are processed in order,
+    // so later rules override earlier rulse
+    {
+        "conditions": {
+            "type": "transfer"
+        },
+        "actions": {
+            "sum": "mining_income"
+        }
+    },
+    {
+        "conditions": {
+            "type": "buy"
+        },
+        "actions": {
+            "sum": "purchases"
+        }
+    },
+    {
+        "conditions": {
+            "type": "sell"
+        },
+        "actions": {
+            "sum": "purchases"
+        }
+    },
+    {
+        "conditions": {
+            "type": "transfer"
+        },
+        "actions": {
+            "noop": "//ignore"
+        }
+    }
+]
