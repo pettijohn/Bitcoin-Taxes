@@ -42,7 +42,24 @@ class TxField:
     CRYPTOAMOUNT = "amount.amount"
     FIATCURRENCY = "native_amount.currency"
     FIATAMOUNT = "native_amount.amount"
+    ID = "id"
+    CREATED_AT = "created_at"
     
+class Outfile:
+    DATE = "Date"
+    ID = "ID"
+    TAXTYPE = "TaxType"
+    TAXTYPE_INCOME = "Mining Income"
+    TAXTYPE_BUY = "Buy"
+    TAXTYPE_SELL = "Sell"
+    TAXTYPE_NOOP = "No-op"
+    CRYPTOAMOUNT = "CryptoAmount"
+    CRYPTOCURRENCY = "CryptoCurrency"
+    FIATAMOUNT = "FiatAmount"
+    FIATCURRENCY = "FiatCurrency"
+    BALANCECRYPTO = "BalanceCrypto"
+    BALANCEFIAT = "BalanceFiat"
+    COSTBASIS = "CostBasis"
 
 # A column name uses dot syntax to step into nested dictionaries. 
 # Recursively walk the dots and return the value.
@@ -98,16 +115,34 @@ with open('./data/coinbaseCache.json', 'r') as cache:
     runningTotalBTC = RunningTotal(CryptoCurrency.BTC)
     runningTotalETH = RunningTotal(CryptoCurrency.ETH)
 
-    for tx in data:
+    with open('./output.csv', 'w', newline='', encoding='utf-8') as outputfile:
+        # Use a dictionary to write the CSV
+        outputcsv = csv.DictWriter(outputfile, 
+            [Outfile.DATE, Outfile.ID, Outfile.TAXTYPE, Outfile.CRYPTOAMOUNT,
+            Outfile.CRYPTOCURRENCY, Outfile.FIATAMOUNT, Outfile.FIATCURRENCY, 
+            Outfile.BALANCECRYPTO, Outfile.BALANCEFIAT, Outfile.COSTBASIS])
+        outputcsv.writeheader()
+    
+        for tx in data:
 
-        if getSubcolumn(tx, TxField.TYPE) == TxType.BUY:
-            rt = runningTotalBTC if getSubcolumn(tx, TxField.CRYPTOCURRENCY) == CryptoCurrency.BTC else runningTotalETH
-            rt.cryptoBalance += Decimal(getSubcolumn(tx, TxField.CRYPTOAMOUNT))
-            rt.fiatTotalExpense += Decimal(getSubcolumn(tx, TxField.FIATAMOUNT))
+            if getSubcolumn(tx, TxField.TYPE) == TxType.BUY:
+                rt = runningTotalBTC if getSubcolumn(tx, TxField.CRYPTOCURRENCY) == CryptoCurrency.BTC else runningTotalETH
+                rt.cryptoBalance += Decimal(getSubcolumn(tx, TxField.CRYPTOAMOUNT))
+                rt.fiatTotalExpense += Decimal(getSubcolumn(tx, TxField.FIATAMOUNT))
 
-    pass
-    foo = runningTotalBTC.getCostBasis()
-
+                line = {
+                    Outfile.DATE: tx[TxField.CREATED_AT],
+                    Outfile.ID: tx[TxField.ID],
+                    Outfile.TAXTYPE: Outfile.TAXTYPE_BUY, #hard coded
+                    Outfile.CRYPTOAMOUNT: Decimal(getSubcolumn(tx, TxField.CRYPTOAMOUNT)),
+                    Outfile.CRYPTOCURRENCY: getSubcolumn(tx, TxField.CRYPTOCURRENCY), 
+                    Outfile.FIATAMOUNT: Decimal(getSubcolumn(tx, TxField.FIATAMOUNT)),
+                    Outfile.FIATCURRENCY: "USD",
+                    Outfile.BALANCECRYPTO: rt.cryptoBalance,
+                    Outfile.BALANCEFIAT: rt.fiatTotalExpense,
+                    Outfile.COSTBASIS: rt.getCostBasis()
+                }
+                outputcsv.writerow(line)
 
 
     # rules = [rules.MiningIncome()]
